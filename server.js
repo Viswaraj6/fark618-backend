@@ -3,9 +3,9 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const app = express();
-app.use(express.json());
 
-// 🔥 CORS (frontend connect fix)
+// 🔥 Middleware
+app.use(express.json());
 app.use(cors({
   origin: "*"
 }));
@@ -26,13 +26,16 @@ const Product = mongoose.model("Product", {
   image: String
 });
 
-// 🧾 Order Schema
+
+// 🧾 Order Schema (🔥 FIXED WITH USER)
 const Order = mongoose.model("Order", {
+  user: String, // ✅ முக்கியம்
   products: Array,
   total: Number,
-  status: { type: String, default: "Pending" }, // 🔥 NEW
+  status: { type: String, default: "Pending" },
   date: { type: Date, default: Date.now }
 });
+
 
 // 🟢 ROOT
 app.get("/", (req, res) => {
@@ -47,52 +50,67 @@ app.post("/add-product", async (req, res) => {
     await product.save();
     res.json(product);
   } catch (err) {
+    console.log(err);
     res.status(500).send("Error adding product");
   }
 });
 
 
-// 📥 GET PRODUCTS (IMPORTANT)
+// 📥 GET PRODUCTS
 app.get("/products", async (req, res) => {
   try {
     const data = await Product.find();
     res.json(data);
   } catch (err) {
+    console.log(err);
     res.status(500).send("Error fetching products");
   }
 });
 
 
-// ✏️ UPDATE
+// ✏️ UPDATE PRODUCT
 app.put("/products/:id", async (req, res) => {
   try {
     await Product.findByIdAndUpdate(req.params.id, req.body);
     res.send("Updated ✅");
   } catch (err) {
+    console.log(err);
     res.status(500).send("Error updating");
   }
 });
 
 
-// ❌ DELETE
+// ❌ DELETE PRODUCT
 app.delete("/products/:id", async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
     res.send("Deleted ✅");
   } catch (err) {
+    console.log(err);
     res.status(500).send("Error deleting");
   }
 });
 
 
-// 🛒 ORDER
+// 🛒 PLACE ORDER (🔥 IMPORTANT FIX)
 app.post("/order", async (req, res) => {
   try {
-    const order = new Order(req.body);
+    const { user, products, total, status } = req.body;
+
+    const order = new Order({
+      user,
+      products,
+      total,
+      status
+    });
+
     await order.save();
-    res.send("Order placed ✅");
+
+    res.json({ message: "Order placed ✅" });
+
   } catch (err) {
-    res.status(500).send("Error placing order");
+    console.log("Order Error:", err);
+    res.status(500).json({ error: "Order failed ❌" });
   }
 });
 
@@ -103,16 +121,12 @@ app.get("/orders", async (req, res) => {
     const data = await Order.find();
     res.json(data);
   } catch (err) {
+    console.log(err);
     res.status(500).send("Error fetching orders");
   }
 });
 
 
-// 🚀 START
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
 // 🔄 UPDATE ORDER STATUS
 app.put("/orders/:id", async (req, res) => {
   try {
@@ -121,6 +135,15 @@ app.put("/orders/:id", async (req, res) => {
     });
     res.send("Order Updated ✅");
   } catch (err) {
+    console.log(err);
     res.status(500).send("Error updating order");
   }
+});
+
+
+// 🚀 START SERVER
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
 });
