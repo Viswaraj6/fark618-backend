@@ -5,58 +5,55 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "Vivin@14"; // change pannunga
-const JWT_SECRET = "fark-secret";
 const app = express();
 
-/* 🔥 IMPORTANT FIX (IMAGE UPLOAD) */
+/* 🔥 FIX (IMPORTANT) */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
 app.use(cors({ origin: "*" }));
-app.post("/admin-login", (req, res) => {
 
+/* 🔐 ADMIN LOGIN */
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "Vivin@14";
+const JWT_SECRET = "fark-secret";
+
+app.post("/admin-login", (req, res) => {
   const { username, password } = req.body;
 
-  if(username === ADMIN_USER && password === ADMIN_PASS){
-
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
     const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "1d" });
-
     res.json({ token });
-
   } else {
     res.status(401).json({ error: "Invalid login ❌" });
   }
 });
-// 🔐 ADMIN CHECK
-function checkAdmin(req, res, next){
 
+/* 🔐 CHECK ADMIN */
+function checkAdmin(req, res, next) {
   const token = req.headers.authorization;
 
-  if(!token){
-    return res.status(401).json({ error: "No token ❌" });
-  }
+  if (!token) return res.status(401).json({ error: "No token ❌" });
 
-  try{
+  try {
     jwt.verify(token, JWT_SECRET);
     next();
   } catch {
     res.status(401).json({ error: "Invalid token ❌" });
   }
 }
-// ✅ DB
+
+/* ✅ DB */
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log(err));
 
-// 💳 Razorpay
+/* 💳 Razorpay */
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// 📦 PRODUCT MODEL
+/* 📦 PRODUCT MODEL */
 const Product = mongoose.model("Product", {
   name: String,
   price: Number,
@@ -65,7 +62,7 @@ const Product = mongoose.model("Product", {
   image: String
 });
 
-// 🧾 ORDER MODEL
+/* 🧾 ORDER MODEL */
 const Order = mongoose.model("Order", {
   user: String,
   name: String,
@@ -78,7 +75,7 @@ const Order = mongoose.model("Order", {
   date: { type: Date, default: Date.now }
 });
 
-// 🟢 ROOT
+/* 🟢 ROOT */
 app.get("/", (req, res) => {
   res.send("API Running 🚀");
 });
@@ -129,7 +126,6 @@ app.post("/create-order", async (req, res) => {
 // 🔒 VERIFY PAYMENT
 app.post("/verify-payment", async (req, res) => {
   try {
-
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -173,9 +169,7 @@ app.get("/orders", async (req, res) => {
 app.put("/orders/:id", checkAdmin, async (req, res) => {
   try {
     const { status } = req.body;
-
     await Order.findByIdAndUpdate(req.params.id, { status });
-
     res.json({ message: "Status Updated ✅" });
   } catch (err) {
     res.status(500).json({ error: "Update failed ❌" });
