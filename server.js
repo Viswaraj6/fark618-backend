@@ -5,8 +5,9 @@ const cors = require("cors");
 const app = express();
 
 // 🔥 Middleware
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(cors({ origin: "*" }));
+
 
 // 🔐 ADMIN SECURITY
 function checkAdmin(req, res, next) {
@@ -16,6 +17,7 @@ function checkAdmin(req, res, next) {
   next();
 }
 
+
 // ✅ MongoDB Connect
 const MONGO_URL = process.env.MONGO_URL;
 
@@ -24,17 +26,18 @@ mongoose.connect(MONGO_URL)
   .catch(err => console.log("Mongo Error ❌", err));
 
 
-// 📦 Product Schema (🔥 TYPE ADDED)
+// 📦 PRODUCT SCHEMA (🔥 SIZE ADDED)
 const Product = mongoose.model("Product", {
   name: String,
   price: Number,
   stock: Number,
-  type: String,   // 🔥 shirt / pant
+  type: String,   // shirt / pant
+  sizes: [String], // 🔥 NEW
   image: String
 });
 
 
-// 🧾 Order Schema (🔥 SIZE SUPPORT)
+// 🧾 ORDER SCHEMA (SIZE SUPPORT)
 const Order = mongoose.model("Order", {
   user: String,
   products: [
@@ -42,7 +45,7 @@ const Order = mongoose.model("Order", {
       id: String,
       name: String,
       price: Number,
-      size: String   // 🔥 முக்கியம்
+      size: String // 🔥 important
     }
   ],
   total: Number,
@@ -60,9 +63,22 @@ app.get("/", (req, res) => {
 // ➕ ADD PRODUCT (🔐 SECURE)
 app.post("/add-product", checkAdmin, async (req, res) => {
   try {
-    const product = new Product(req.body);
+
+    const { name, price, stock, type, sizes, image } = req.body;
+
+    const product = new Product({
+      name,
+      price,
+      stock,
+      type,
+      sizes, // 🔥 store sizes
+      image
+    });
+
     await product.save();
+
     res.json(product);
+
   } catch (err) {
     console.log(err);
     res.status(500).send("Error adding product");
@@ -70,7 +86,7 @@ app.post("/add-product", checkAdmin, async (req, res) => {
 });
 
 
-// 📥 GET PRODUCTS (PUBLIC)
+// 📥 GET PRODUCTS
 app.get("/products", async (req, res) => {
   try {
     const data = await Product.find();
@@ -82,7 +98,7 @@ app.get("/products", async (req, res) => {
 });
 
 
-// ✏️ UPDATE PRODUCT (🔐 SECURE)
+// ✏️ UPDATE PRODUCT
 app.put("/products/:id", checkAdmin, async (req, res) => {
   try {
     await Product.findByIdAndUpdate(req.params.id, req.body);
@@ -94,7 +110,7 @@ app.put("/products/:id", checkAdmin, async (req, res) => {
 });
 
 
-// ❌ DELETE PRODUCT (🔐 SECURE)
+// ❌ DELETE PRODUCT
 app.delete("/products/:id", checkAdmin, async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
@@ -109,11 +125,12 @@ app.delete("/products/:id", checkAdmin, async (req, res) => {
 // 🛒 PLACE ORDER (SIZE INCLUDED)
 app.post("/order", async (req, res) => {
   try {
+
     const { user, products, total } = req.body;
 
     const order = new Order({
       user,
-      products, // 🔥 size already inside
+      products, // size already inside
       total
     });
 
@@ -128,7 +145,7 @@ app.post("/order", async (req, res) => {
 });
 
 
-// 📦 GET ORDERS (PUBLIC)
+// 📦 GET ORDERS
 app.get("/orders", async (req, res) => {
   try {
     const data = await Order.find();
@@ -140,7 +157,7 @@ app.get("/orders", async (req, res) => {
 });
 
 
-// 🔄 UPDATE ORDER STATUS (🔐 SECURE)
+// 🔄 UPDATE ORDER STATUS
 app.put("/orders/:id", checkAdmin, async (req, res) => {
   try {
     await Order.findByIdAndUpdate(req.params.id, {
