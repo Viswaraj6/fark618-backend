@@ -6,10 +6,13 @@ const crypto = require("crypto");
 
 const app = express();
 
-app.use(express.json());
+/* 🔥 IMPORTANT FIX (IMAGE UPLOAD) */
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
 app.use(cors({ origin: "*" }));
 
-// 🔐 ADMIN
+// 🔐 ADMIN CHECK
 function checkAdmin(req, res, next) {
   if (req.headers.admin !== "fark618") {
     return res.status(401).json({ error: "Unauthorized ❌" });
@@ -28,7 +31,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// 📦 PRODUCT
+// 📦 PRODUCT MODEL
 const Product = mongoose.model("Product", {
   name: String,
   price: Number,
@@ -37,7 +40,7 @@ const Product = mongoose.model("Product", {
   image: String
 });
 
-// 🧾 ORDER
+// 🧾 ORDER MODEL
 const Order = mongoose.model("Order", {
   user: String,
   name: String,
@@ -46,7 +49,7 @@ const Order = mongoose.model("Order", {
   products: Array,
   total: Number,
   paymentId: String,
-  status: String,
+  status: { type: String, default: "Pending" },
   date: { type: Date, default: Date.now }
 });
 
@@ -55,6 +58,32 @@ app.get("/", (req, res) => {
   res.send("API Running 🚀");
 });
 
+/* ================= PRODUCT ================= */
+
+// ➕ ADD PRODUCT
+app.post("/add-product", checkAdmin, async (req, res) => {
+  try {
+    const product = new Product(req.body);
+    await product.save();
+    res.json({ message: "Product Added ✅" });
+  } catch (err) {
+    res.status(500).json({ error: "Add product failed ❌" });
+  }
+});
+
+// 📦 GET PRODUCTS
+app.get("/products", async (req, res) => {
+  const data = await Product.find().sort({ _id: -1 });
+  res.json(data);
+});
+
+// ❌ DELETE PRODUCT
+app.delete("/products/:id", checkAdmin, async (req, res) => {
+  await Product.findByIdAndDelete(req.params.id);
+  res.json({ message: "Deleted ✅" });
+});
+
+/* ================= PAYMENT ================= */
 
 // 🔥 CREATE ORDER (Razorpay)
 app.post("/create-order", async (req, res) => {
@@ -71,7 +100,6 @@ app.post("/create-order", async (req, res) => {
     res.status(500).json({ error: "Razorpay error ❌" });
   }
 });
-
 
 // 🔒 VERIFY PAYMENT
 app.post("/verify-payment", async (req, res) => {
@@ -97,41 +125,40 @@ app.post("/verify-payment", async (req, res) => {
   }
 });
 
+/* ================= ORDERS ================= */
 
 // 🛒 SAVE ORDER
 app.post("/order", async (req, res) => {
   try {
-
     const order = new Order(req.body);
     await order.save();
-
     res.json({ message: "Order saved ✅" });
-
   } catch (err) {
     res.status(500).json({ error: "Order failed ❌" });
   }
 });
-
 
 // 📦 GET ORDERS
 app.get("/orders", async (req, res) => {
   const data = await Order.find().sort({ date: -1 });
   res.json(data);
 });
-app.put("/orders/:id", async (req,res) => {
 
-  if(req.headers.admin !== "fark618"){
-    return res.status(403).send("Unauthorized");
+// 🔄 UPDATE STATUS
+app.put("/orders/:id", checkAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    await Order.findByIdAndUpdate(req.params.id, { status });
+
+    res.json({ message: "Status Updated ✅" });
+  } catch (err) {
+    res.status(500).json({ error: "Update failed ❌" });
   }
-
-  const { status } = req.body;
-
-  await Order.findByIdAndUpdate(req.params.id, { status });
-
-  res.send("Updated");
 });
 
-// 🚀 START
+/* ================= START ================= */
+
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running 🚀");
 });
