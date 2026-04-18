@@ -87,7 +87,7 @@ app.get("/", (req, res) => {
 
 /* ================= PRODUCT ================= */
 
-app.post("/add-product", checkAdmin, async (req, res) => {
+app.post("/add-product", async (req, res) => {
   try {
     const product = new Product(req.body);
     await product.save();
