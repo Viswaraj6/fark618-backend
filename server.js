@@ -12,32 +12,31 @@ app.use(cors({ origin: "*" }));
 // 🔐 ADMIN SECURITY
 function checkAdmin(req, res, next) {
   if (req.headers.admin !== "fark618") {
-    return res.status(401).send("Unauthorized ❌");
+    return res.status(401).json({ error: "Unauthorized ❌" });
   }
   next();
 }
 
 
 // ✅ MongoDB Connect
-const MONGO_URL = process.env.MONGO_URL;
-
-mongoose.connect(MONGO_URL)
+mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log("Mongo Error ❌", err));
 
 
-// 📦 PRODUCT SCHEMA (🔥 SIZE ADDED)
+// 📦 PRODUCT SCHEMA
 const Product = mongoose.model("Product", {
-  name: String,
+  name: { type: String, required: true },
   price: Number,
   stock: Number,
-  type: String,   // shirt / pant
-  sizes: [String], // 🔥 NEW
-  image: String
+  type: String,
+  sizes: [String],   // 🔥 SIZE SUPPORT
+  image: String,
+  createdAt: { type: Date, default: Date.now }
 });
 
 
-// 🧾 ORDER SCHEMA (SIZE SUPPORT)
+// 🧾 ORDER SCHEMA
 const Order = mongoose.model("Order", {
   user: String,
   products: [
@@ -45,7 +44,7 @@ const Order = mongoose.model("Order", {
       id: String,
       name: String,
       price: Number,
-      size: String // 🔥 important
+      size: String
     }
   ],
   total: Number,
@@ -60,28 +59,35 @@ app.get("/", (req, res) => {
 });
 
 
-// ➕ ADD PRODUCT (🔐 SECURE)
+// ➕ ADD PRODUCT
 app.post("/add-product", checkAdmin, async (req, res) => {
   try {
 
-    const { name, price, stock, type, sizes, image } = req.body;
+    let { name, price, stock, type, sizes, image } = req.body;
+
+    // 🔥 CLEAN SIZE (IMPORTANT)
+    if (sizes && Array.isArray(sizes)) {
+      sizes = sizes.map(s => s.trim());
+    } else {
+      sizes = [];
+    }
 
     const product = new Product({
       name,
       price,
       stock,
       type,
-      sizes, // 🔥 store sizes
+      sizes,
       image
     });
 
     await product.save();
 
-    res.json(product);
+    res.json({ message: "Product added ✅", product });
 
   } catch (err) {
     console.log(err);
-    res.status(500).send("Error adding product");
+    res.status(500).json({ error: "Error adding product ❌" });
   }
 });
 
@@ -89,11 +95,10 @@ app.post("/add-product", checkAdmin, async (req, res) => {
 // 📥 GET PRODUCTS
 app.get("/products", async (req, res) => {
   try {
-    const data = await Product.find();
+    const data = await Product.find().sort({ createdAt: -1 });
     res.json(data);
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error fetching products");
+    res.status(500).json({ error: "Error fetching products ❌" });
   }
 });
 
@@ -101,11 +106,19 @@ app.get("/products", async (req, res) => {
 // ✏️ UPDATE PRODUCT
 app.put("/products/:id", checkAdmin, async (req, res) => {
   try {
-    await Product.findByIdAndUpdate(req.params.id, req.body);
-    res.send("Updated ✅");
+
+    let updateData = req.body;
+
+    if (updateData.sizes && Array.isArray(updateData.sizes)) {
+      updateData.sizes = updateData.sizes.map(s => s.trim());
+    }
+
+    await Product.findByIdAndUpdate(req.params.id, updateData);
+
+    res.json({ message: "Updated ✅" });
+
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error updating");
+    res.status(500).json({ error: "Error updating ❌" });
   }
 });
 
@@ -114,23 +127,27 @@ app.put("/products/:id", checkAdmin, async (req, res) => {
 app.delete("/products/:id", checkAdmin, async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
-    res.send("Deleted ✅");
+    res.json({ message: "Deleted ✅" });
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error deleting");
+    res.status(500).json({ error: "Error deleting ❌" });
   }
 });
 
 
-// 🛒 PLACE ORDER (SIZE INCLUDED)
+// 🛒 PLACE ORDER
 app.post("/order", async (req, res) => {
   try {
 
     const { user, products, total } = req.body;
 
+    // 🔥 VALIDATION
+    if (!products || products.length === 0) {
+      return res.status(400).json({ error: "Cart empty ❌" });
+    }
+
     const order = new Order({
       user,
-      products, // size already inside
+      products,
       total
     });
 
@@ -139,7 +156,7 @@ app.post("/order", async (req, res) => {
     res.json({ message: "Order placed ✅" });
 
   } catch (err) {
-    console.log("Order Error:", err);
+    console.log(err);
     res.status(500).json({ error: "Order failed ❌" });
   }
 });
@@ -148,11 +165,10 @@ app.post("/order", async (req, res) => {
 // 📦 GET ORDERS
 app.get("/orders", async (req, res) => {
   try {
-    const data = await Order.find();
+    const data = await Order.find().sort({ date: -1 });
     res.json(data);
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error fetching orders");
+    res.status(500).json({ error: "Error fetching orders ❌" });
   }
 });
 
@@ -160,13 +176,15 @@ app.get("/orders", async (req, res) => {
 // 🔄 UPDATE ORDER STATUS
 app.put("/orders/:id", checkAdmin, async (req, res) => {
   try {
+
     await Order.findByIdAndUpdate(req.params.id, {
       status: req.body.status
     });
-    res.send("Order Updated ✅");
+
+    res.json({ message: "Order Updated ✅" });
+
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error updating order");
+    res.status(500).json({ error: "Error updating order ❌" });
   }
 });
 
