@@ -118,7 +118,18 @@ app.get("/orders", async (req, res) => {
   const data = await Order.find().sort({ date: -1 });
   res.json(data);
 });
+app.put("/orders/:id", async (req,res) => {
 
+  if(req.headers.admin !== "fark618"){
+    return res.status(403).send("Unauthorized");
+  }
+
+  const { status } = req.body;
+
+  await Order.findByIdAndUpdate(req.params.id, { status });
+
+  res.send("Updated");
+});
 
 // 🚀 START
 app.listen(process.env.PORT || 5000, () => {
