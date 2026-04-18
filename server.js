@@ -3,7 +3,11 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
 
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "Vivin@14"; // change pannunga
+const JWT_SECRET = "fark-secret";
 const app = express();
 
 /* 🔥 IMPORTANT FIX (IMAGE UPLOAD) */
@@ -11,15 +15,36 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use(cors({ origin: "*" }));
+app.post("/admin-login", (req, res) => {
 
-// 🔐 ADMIN CHECK
-function checkAdmin(req, res, next) {
-  if (req.headers.admin !== "fark618") {
-    return res.status(401).json({ error: "Unauthorized ❌" });
+  const { username, password } = req.body;
+
+  if(username === ADMIN_USER && password === ADMIN_PASS){
+
+    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "1d" });
+
+    res.json({ token });
+
+  } else {
+    res.status(401).json({ error: "Invalid login ❌" });
   }
-  next();
-}
+});
+// 🔐 ADMIN CHECK
+function checkAdmin(req, res, next){
 
+  const token = req.headers.authorization;
+
+  if(!token){
+    return res.status(401).json({ error: "No token ❌" });
+  }
+
+  try{
+    jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid token ❌" });
+  }
+}
 // ✅ DB
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
