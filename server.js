@@ -7,7 +7,6 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 
-/* 🔥 FIX (IMPORTANT) */
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors({ origin: "*" }));
@@ -28,10 +27,9 @@ app.post("/admin-login", (req, res) => {
   }
 });
 
-/* 🔐 CHECK ADMIN */
+/* 🔐 ADMIN CHECK */
 function checkAdmin(req, res, next) {
   const token = req.headers.authorization;
-
   if (!token) return res.status(401).json({ error: "No token ❌" });
 
   try {
@@ -47,13 +45,20 @@ mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log(err));
 
-/* 💳 Razorpay */
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+/* 💳 RAZORPAY SAFE INIT */
+let razorpay = null;
 
-/* 📦 PRODUCT MODEL */
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
+  console.log("Razorpay Initialized ✅");
+} else {
+  console.log("⚠ Razorpay keys missing - payment disabled");
+}
+
+/* 📦 PRODUCT */
 const Product = mongoose.model("Product", {
   name: String,
   price: Number,
@@ -62,7 +67,7 @@ const Product = mongoose.model("Product", {
   image: String
 });
 
-/* 🧾 ORDER MODEL */
+/* 🧾 ORDER */
 const Order = mongoose.model("Order", {
   user: String,
   name: String,
@@ -82,24 +87,21 @@ app.get("/", (req, res) => {
 
 /* ================= PRODUCT ================= */
 
-// ➕ ADD PRODUCT
 app.post("/add-product", checkAdmin, async (req, res) => {
   try {
     const product = new Product(req.body);
     await product.save();
     res.json({ message: "Product Added ✅" });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Add product failed ❌" });
   }
 });
 
-// 📦 GET PRODUCTS
 app.get("/products", async (req, res) => {
   const data = await Product.find().sort({ _id: -1 });
   res.json(data);
 });
 
-// ❌ DELETE PRODUCT
 app.delete("/products/:id", checkAdmin, async (req, res) => {
   await Product.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted ✅" });
@@ -107,23 +109,23 @@ app.delete("/products/:id", checkAdmin, async (req, res) => {
 
 /* ================= PAYMENT ================= */
 
-// 🔥 CREATE ORDER (Razorpay)
 app.post("/create-order", async (req, res) => {
+  if (!razorpay) {
+    return res.status(500).json({ error: "Payment not configured ❌" });
+  }
+
   try {
-    const options = {
+    const order = await razorpay.orders.create({
       amount: req.body.amount * 100,
       currency: "INR"
-    };
+    });
 
-    const order = await razorpay.orders.create(options);
     res.json(order);
-
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Razorpay error ❌" });
   }
 });
 
-// 🔒 VERIFY PAYMENT
 app.post("/verify-payment", async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -131,8 +133,8 @@ app.post("/verify-payment", async (req, res) => {
     const body = razorpay_order_id + "|" + razorpay_payment_id;
 
     const expected = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
+      .update(body)
       .digest("hex");
 
     if (expected === razorpay_signature) {
@@ -140,38 +142,33 @@ app.post("/verify-payment", async (req, res) => {
     } else {
       res.status(400).json({ success: false });
     }
-
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Verification failed ❌" });
   }
 });
 
 /* ================= ORDERS ================= */
 
-// 🛒 SAVE ORDER
 app.post("/order", async (req, res) => {
   try {
     const order = new Order(req.body);
     await order.save();
     res.json({ message: "Order saved ✅" });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Order failed ❌" });
   }
 });
 
-// 📦 GET ORDERS
 app.get("/orders", async (req, res) => {
   const data = await Order.find().sort({ date: -1 });
   res.json(data);
 });
 
-// 🔄 UPDATE STATUS
 app.put("/orders/:id", checkAdmin, async (req, res) => {
   try {
-    const { status } = req.body;
-    await Order.findByIdAndUpdate(req.params.id, { status });
-    res.json({ message: "Status Updated ✅" });
-  } catch (err) {
+    await Order.findByIdAndUpdate(req.params.id, { status: req.body.status });
+    res.json({ message: "Updated ✅" });
+  } catch {
     res.status(500).json({ error: "Update failed ❌" });
   }
 });
