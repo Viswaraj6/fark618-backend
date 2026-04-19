@@ -294,8 +294,9 @@ app.put("/orders/:id", checkAdmin, async (req, res) => {
       message: "Updated ✅"
     });
 
-  } catch {
-    res.status(500).json({ error: "Update failed ❌" });
+  } catch(err){
+  console.log("ERROR 👉", err.response?.data || err.message);
+  res.status(500).json(err.response?.data || err.message);
   }
 });
 
