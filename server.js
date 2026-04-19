@@ -86,7 +86,28 @@ const Order = mongoose.model("Order", {
   status: { type: String, default: "Pending" },
   date: { type: Date, default: Date.now }
 });
+// 🔥 BANNER MODEL
+const Banner = mongoose.model("Banner", {
+  type: String, // "video" or "slider"
+  videoUrl: String,
+  images: [String]
+});
 
+// SAVE BANNER
+app.post("/banner", async (req, res) => {
+  await Banner.deleteMany();
+
+  const banner = new Banner(req.body);
+  await banner.save();
+
+  res.json({ success: true });
+});
+
+// GET BANNER
+app.get("/banner", async (req, res) => {
+  const data = await Banner.findOne();
+  res.json(data || {});
+});
 /* ================= PRODUCT ================= */
 
 /* ADD PRODUCT (ADMIN ONLY) */
