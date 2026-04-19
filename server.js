@@ -318,7 +318,30 @@ app.put("/orders/:id", checkAdmin, async (req, res) => {
     res.status(500).json({ error: "Update failed ❌" });
   }
 });
+app.get("/get-token", async (req,res)=>{
+  try{
 
+    const response = await axios.post(
+      "https://accounts.zoho.in/oauth/v2/token",
+      null,
+      {
+        params:{
+          grant_type: "authorization_code",
+          client_id: "1000.GUFQQFY6RWE4VCDE6UBBWCRRJQPO5C",
+          client_secret: "885c79557ec30fd1dde5ee5197005cc85cb1468142",
+          redirect_uri: "https://app.zakya.in",
+          code: "PASTE_NEW_CODE_HERE"
+        }
+      }
+    );
+
+    res.json(response.data);
+
+  }catch(err){
+    console.log(err.response?.data);
+    res.json(err.response?.data);
+  }
+});
 /* ================= START ================= */
 
 app.listen(process.env.PORT || 5000, () => {
