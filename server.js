@@ -130,10 +130,6 @@ app.post("/add-product", checkAdmin, async (req, res) => {
 });
 
 /* GET PRODUCTS */
-app.get("/products", async (req, res) => {
-  const data = await Product.find().sort({ _id: -1 });
-  res.json(data);
-});
 app.get("/sync-zakya", async (req,res)=>{
 
   try{
@@ -142,7 +138,7 @@ app.get("/sync-zakya", async (req,res)=>{
       "https://www.zohoapis.in/inventory/v1/items?organization_id=YOUR_ORG_ID",
       {
         headers:{
-          Authorization: "Zoho-oauthtoken YOUR_ACCESS_TOKEN"
+          Authorization: "Zoho-oauthtoken 1000.bd6579e2626dcba1cef1d20d42d2394b.580f9e20da3971f4ad08eaddc9ec75b9"
         }
       }
     );
@@ -150,20 +146,11 @@ app.get("/sync-zakya", async (req,res)=>{
     const items = response.data.items;
 
     const shirtMap = {
-      "1":"S",
-      "2":"M",
-      "3":"L",
-      "4":"XL",
-      "5":"XXL"
+      "1":"S","2":"M","3":"L","4":"XL","5":"XXL"
     };
 
     const pantMap = {
-      "1":"30",
-      "2":"32",
-      "3":"34",
-      "4":"36",
-      "5":"38",
-      "6":"40"
+      "1":"30","2":"32","3":"34","4":"36","5":"38","6":"40"
     };
 
     for(let item of items){
@@ -174,28 +161,21 @@ app.get("/sync-zakya", async (req,res)=>{
       const style = sku.slice(0,4);
       const sizeCode = sku.slice(-1);
 
-      // 🔥 detect type
-      let size = "";
-
-      if(item.name.toLowerCase().includes("pant")){
-        size = pantMap[sizeCode];
-      } else {
-        size = shirtMap[sizeCode];
-      }
+      let size = shirtMap[sizeCode] || pantMap[sizeCode];
 
       if(!size) continue;
 
       await Product.updateOne(
-        { style: style, "sizeStock.size": size },
+        { style: style },
         {
           $set: {
-            "sizeStock.$.stock": item.available_stock
+            [`sizeStock.${size}`]: item.available_stock
           }
         }
       );
     }
 
-    res.json({msg:"Synced Shirt + Pant ✅"});
+    res.json({msg:"Zakya Sync Success ✅"});
 
   }catch(err){
     console.log(err);
@@ -318,30 +298,7 @@ app.put("/orders/:id", checkAdmin, async (req, res) => {
     res.status(500).json({ error: "Update failed ❌" });
   }
 });
-app.get("/get-token", async (req,res)=>{
-  try{
 
-    const response = await axios.post(
-      "https://accounts.zoho.in/oauth/v2/token",
-      null,
-      {
-        params:{
-          grant_type: "authorization_code",
-          client_id: "1000.GUFQQFY6RWE4VCDE6UBBWCRRJQPO5C",
-          client_secret: "885c79557ec30fd1dde5ee5197005cc85cb1468142",
-          redirect_uri: "https://app.zakya.in",
-          code: "1000.ae4f6d92052d120b3de8a83863d324d4.ccea0a3ac670d8f2ae6cb91eb679ab22"
-        }
-      }
-    );
-
-    res.json(response.data);
-
-  }catch(err){
-    console.log(err.response?.data);
-    res.json(err.response?.data);
-  }
-});
 /* ================= START ================= */
 
 app.listen(process.env.PORT || 5000, () => {
