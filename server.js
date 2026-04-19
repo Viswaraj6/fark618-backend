@@ -4,7 +4,7 @@ const cors = require("cors");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
-
+const axios = require("axios");
 const app = express();
 
 app.use(express.json({ limit: "50mb" }));
@@ -134,7 +134,75 @@ app.get("/products", async (req, res) => {
   const data = await Product.find().sort({ _id: -1 });
   res.json(data);
 });
+app.get("/sync-zakya", async (req,res)=>{
 
+  try{
+
+    const response = await axios.get(
+      "https://www.zohoapis.in/inventory/v1/items?organization_id=YOUR_ORG_ID",
+      {
+        headers:{
+          Authorization: "Zoho-oauthtoken YOUR_ACCESS_TOKEN"
+        }
+      }
+    );
+
+    const items = response.data.items;
+
+    const shirtMap = {
+      "1":"S",
+      "2":"M",
+      "3":"L",
+      "4":"XL",
+      "5":"XXL"
+    };
+
+    const pantMap = {
+      "1":"30",
+      "2":"32",
+      "3":"34",
+      "4":"36",
+      "5":"38",
+      "6":"40"
+    };
+
+    for(let item of items){
+
+      const sku = item.sku;
+      if(!sku) continue;
+
+      const style = sku.slice(0,4);
+      const sizeCode = sku.slice(-1);
+
+      // 🔥 detect type
+      let size = "";
+
+      if(item.name.toLowerCase().includes("pant")){
+        size = pantMap[sizeCode];
+      } else {
+        size = shirtMap[sizeCode];
+      }
+
+      if(!size) continue;
+
+      await Product.updateOne(
+        { style: style, "sizeStock.size": size },
+        {
+          $set: {
+            "sizeStock.$.stock": item.available_stock
+          }
+        }
+      );
+    }
+
+    res.json({msg:"Synced Shirt + Pant ✅"});
+
+  }catch(err){
+    console.log(err);
+    res.status(500).json({error:"Sync failed"});
+  }
+
+});
 /* DELETE PRODUCT (FIXED) */
 app.delete("/products/:id", checkAdmin, async (req, res) => {
   try {
