@@ -330,7 +330,7 @@ app.get("/get-token", async (req,res)=>{
           client_id: "1000.GUFQQFY6RWE4VCDE6UBBWCRRJQPO5C",
           client_secret: "885c79557ec30fd1dde5ee5197005cc85cb1468142",
           redirect_uri: "https://app.zakya.in",
-          code: "PASTE_NEW_CODE_HERE"
+          code: "1000.ae4f6d92052d120b3de8a83863d324d4.ccea0a3ac670d8f2ae6cb91eb679ab22"
         }
       }
     );
