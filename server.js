@@ -70,7 +70,10 @@ const Product = mongoose.model("Product", {
   image: String,
   video: String   // 🔥 ADD THIS
 });
-
+/* 🎬 GLOBAL VIDEO */
+const Video = mongoose.model("Video", {
+  url: String
+});
 /* 🧾 ORDER */
 const Order = mongoose.model("Order", {
   user: String,
@@ -196,7 +199,23 @@ app.get("/orders", async (req, res) => {
   const data = await Order.find().sort({ date: -1 });
   res.json(data);
 });
+/* SAVE / REPLACE VIDEO */
+app.post("/video", checkAdmin, async (req, res) => {
+  try {
+    await Video.deleteMany();
+    const video = new Video({ url: req.body.url });
+    await video.save();
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Video save failed ❌" });
+  }
+});
 
+/* GET VIDEO */
+app.get("/video", async (req, res) => {
+  const v = await Video.findOne();
+  res.json(v || {});
+});
 app.put("/orders/:id", checkAdmin, async (req, res) => {
   try {
     await Order.findByIdAndUpdate(req.params.id, { status: req.body.status });
