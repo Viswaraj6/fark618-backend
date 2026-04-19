@@ -67,7 +67,8 @@ const Product = mongoose.model("Product", {
   price: Number,
   stock: Number,
   sizes: [String],
-  image: String
+  image: String,
+  video: String   // 🔥 ADD THIS
 });
 
 /* 🧾 ORDER */
