@@ -30,13 +30,16 @@ app.post("/admin-login", (req, res) => {
 /* 🔐 ADMIN CHECK */
 function checkAdmin(req, res, next) {
   const token = req.headers.authorization;
-  if (!token) return res.status(401).json({ error: "No token ❌" });
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "No token ❌" });
+  }
 
   try {
-    jwt.verify(token, JWT_SECRET);
+    jwt.verify(token.replace("Bearer ", ""), JWT_SECRET);
     next();
   } catch {
-    res.status(401).json({ error: "Invalid token ❌" });
+    res.status(401).json({ success: false, message: "Invalid token ❌" });
   }
 }
 
@@ -45,7 +48,7 @@ mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log(err));
 
-/* 💳 RAZORPAY SAFE INIT */
+/* 💳 RAZORPAY */
 let razorpay = null;
 
 if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
@@ -55,7 +58,7 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
   });
   console.log("Razorpay Initialized ✅");
 } else {
-  console.log("⚠ Razorpay keys missing - payment disabled");
+  console.log("⚠ Razorpay keys missing");
 }
 
 /* 📦 PRODUCT */
@@ -80,31 +83,58 @@ const Order = mongoose.model("Order", {
   date: { type: Date, default: Date.now }
 });
 
-/* 🟢 ROOT */
-app.get("/", (req, res) => {
-  res.send("API Running 🚀");
-});
-
 /* ================= PRODUCT ================= */
 
-app.post("/add-product", async (req, res) => {
+/* ADD PRODUCT (ADMIN ONLY) */
+app.post("/add-product", checkAdmin, async (req, res) => {
   try {
     const product = new Product(req.body);
     await product.save();
-    res.json({ message: "Product Added ✅" });
+
+    res.json({
+      success: true,
+      message: "Product Added ✅"
+    });
+
   } catch {
-    res.status(500).json({ error: "Add product failed ❌" });
+    res.status(500).json({
+      success: false,
+      message: "Add product failed ❌"
+    });
   }
 });
 
+/* GET PRODUCTS */
 app.get("/products", async (req, res) => {
   const data = await Product.find().sort({ _id: -1 });
   res.json(data);
 });
 
+/* DELETE PRODUCT (FIXED) */
 app.delete("/products/:id", checkAdmin, async (req, res) => {
-  await Product.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted ✅" });
+  try {
+
+    const deleted = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found ❌"
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Deleted successfully ✅"
+    });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      success: false,
+      message: "Delete error ❌"
+    });
+  }
 });
 
 /* ================= PAYMENT ================= */
@@ -153,7 +183,9 @@ app.post("/order", async (req, res) => {
   try {
     const order = new Order(req.body);
     await order.save();
-    res.json({ message: "Order saved ✅" });
+
+    res.json({ success: true });
+
   } catch {
     res.status(500).json({ error: "Order failed ❌" });
   }
@@ -167,7 +199,12 @@ app.get("/orders", async (req, res) => {
 app.put("/orders/:id", checkAdmin, async (req, res) => {
   try {
     await Order.findByIdAndUpdate(req.params.id, { status: req.body.status });
-    res.json({ message: "Updated ✅" });
+
+    res.json({
+      success: true,
+      message: "Updated ✅"
+    });
+
   } catch {
     res.status(500).json({ error: "Update failed ❌" });
   }
