@@ -135,7 +135,7 @@ app.get("/sync-zakya", async (req,res)=>{
   try{
 
     const response = await axios.get(
-      "https://www.zohoapis.in/inventory/v1/items?organization_id=YOUR_ORG_ID",
+      "https://www.zohoapis.in/inventory/v1/items?organization_id=60034809172",
       {
         headers:{
           Authorization: "Zoho-oauthtoken 1000.bd6579e2626dcba1cef1d20d42d2394b.580f9e20da3971f4ad08eaddc9ec75b9"
