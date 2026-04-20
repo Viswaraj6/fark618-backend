@@ -128,60 +128,19 @@ app.post("/add-product", checkAdmin, async (req, res) => {
     });
   }
 });
+app.get("/products", async (req, res) => {
+  try {
 
-/* GET PRODUCTS */
-app.get("/sync-zakya", async (req,res)=>{
+    const products = await Product.find().sort({ _id: -1 });
 
-  try{
+    res.json(products);
 
-    const response = await axios.get(
-      "https://www.zohoapis.in/inventory/v1/items?organization_id=60034808871",
-      {
-        headers:{
-         Authorization: "Zoho-oauthtoken 1000.35e3e8c785173018430194ac5ab5c34d.23267cfa088f5d90ba019cb0cad663f3"
-        }
-      }
-    );
-
-    const items = response.data.items;
-
-    const shirtMap = {
-      "1":"S","2":"M","3":"L","4":"XL","5":"XXL"
-    };
-
-    const pantMap = {
-      "1":"30","2":"32","3":"34","4":"36","5":"38","6":"40"
-    };
-
-    for(let item of items){
-
-      const sku = item.sku;
-      if(!sku) continue;
-
-      const style = sku.slice(0,4);
-      const sizeCode = sku.slice(-1);
-
-      let size = shirtMap[sizeCode] || pantMap[sizeCode];
-
-      if(!size) continue;
-
-      await Product.updateOne(
-        { style: style },
-        {
-          $set: {
-            [`sizeStock.${size}`]: item.available_stock
-          }
-        }
-      );
-    }
-
-    res.json({msg:"Zakya Sync Success ✅"});
-
-  }catch(err){
+  } catch (err) {
     console.log(err);
-    res.status(500).json({error:"Sync failed"});
+    res.status(500).json({
+      error: "Failed to fetch products ❌"
+    });
   }
-
 });
 /* DELETE PRODUCT (FIXED) */
 app.delete("/products/:id", checkAdmin, async (req, res) => {
