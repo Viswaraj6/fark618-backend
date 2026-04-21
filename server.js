@@ -66,9 +66,24 @@ const Product = mongoose.model("Product", {
   name: String,
   price: Number,
   stock: Number,
+
+  // 🔥 IMAGE FIX
+  images: [String],
+
+  // 🔥 DETAILS
+  brand: String,
+  fabric: String,
+  typeDetail: String,
+  fit: String,
+  pattern: String,
+  color: String,
+  occasion: String,
+  description: String,
+
+  // 🔥 OTHER
   sizes: [String],
-  image: String,
-  video: String   // 🔥 ADD THIS
+  sizeStock: Array,
+  category: String
 });
 /* 🎬 GLOBAL VIDEO */
 const Video = mongoose.model("Video", {
