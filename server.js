@@ -89,8 +89,7 @@ const Product = mongoose.model("Product", {
 const Video = mongoose.model("Video", {
   url: String
 });
-/* 🧾 ORDER */
-const Order = mongoose.model("Order", {
+const OrderSchema = new mongoose.Schema({
   user: String,
   name: String,
   phone: String,
@@ -98,9 +97,12 @@ const Order = mongoose.model("Order", {
   products: Array,
   total: Number,
   paymentId: String,
-  status: { type: String, default: "Pending" },
-  date: { type: Date, default: Date.now }
+  status: { type: String, default: "Pending" }
+}, {
+  timestamps: true   // 🔥 IMPORTANT
 });
+
+const Order = mongoose.model("Order", OrderSchema);
 // 🔥 BANNER MODEL
 const Banner = mongoose.model("Banner", {
   type: String, // "video" or "slider"
@@ -239,7 +241,7 @@ app.post("/order", async (req, res) => {
 });
 
 app.get("/orders", async (req, res) => {
-  const data = await Order.find().sort({ date: -1 });
+  const data = await Order.find().sort({ createdAt: -1 });
   res.json(data);
 });
 /* SAVE / REPLACE VIDEO */
