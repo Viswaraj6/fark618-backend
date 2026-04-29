@@ -275,7 +275,23 @@ app.put("/orders/:id", checkAdmin, async (req, res) => {
   res.status(500).json(err.response?.data || err.message);
   }
 });
+/* DELETE ORDER */
+app.delete("/orders/:id", checkAdmin, async (req, res) => {
+  try {
+    await Order.findByIdAndDelete(req.params.id);
 
+    res.json({
+      success: true,
+      message: "Order deleted ✅"
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Delete failed ❌"
+    });
+  }
+});
 /* ================= START ================= */
 
 app.listen(process.env.PORT || 5000, () => {
